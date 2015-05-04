@@ -2,6 +2,7 @@ from math import *
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from scipy.special import *
 
 def crust_model (r, theta):
 	r_star = 1.0e6
@@ -31,12 +32,16 @@ def initial_pure_poloidal (n, m, B):
 	r_star = 1.0e6
 	r_grid  = np.linspace (0.9*r_star, 1.0*r_star, num = n)
 	mu_grid = np.linspace (-1.0, 1.0, num = m) 
+
+	print mu_grid
+
+
 	phi = np.zeros((n,m))
 	I   = np.zeros((n,m))  
 
-	for j in range (2, n-2):
-		for k in range (2, m-2):
-			phi  [j][k] = 1e20 * sqrt(1 - np.power(mu_grid[k], 2.0)) / r_grid[j]  ## This generates another component
+	for j in range (2, n):
+		for k in range (0, m):
+		 	phi  [j][k] = 1e20 * sqrt(1 - np.power(mu_grid[k], 2.0)) / r_grid[j]  ## This generates another component
 			I [j][k] = 0
 #			I  [j][k] = 1e16 * cos(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
 #			phi  [j][k] = 1e20 * sin(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
@@ -78,10 +83,13 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 
         r_grid, mu_grid, ne, sigma = crust_model_grid (n, m)
 
+	phi_new = np.zeros((n,m))
+	I_new = np.zeros((n,m))
+
 #        print delta_t / 3.2e7 
 
-	for j in range (2, n-2):                 ## r  change 
-		for k in range (2, m-2):         ## mu change 
+	for j in range (1, n-2):                 ## r  change 
+		for k in range (1, m-1):         ## mu change 
 			## for each point inside the grid we compute time derivative 
 			## for scalar functions phi and I
 			sintheta  = sqrt(1.0 - pow(mu_grid[k], 2.0))
@@ -103,9 +111,25 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 			phi_rp  = (phi[j+1][k+1] - phi[j-1][k+1]) / (2.0 * delta_r)
 			phi_rl  = (phi[j+1][k-1] - phi[j-1][k-1]) / (2.0 * delta_r)
 			phi_rmu = (phi_rp - phi_rl) / (2.0 * delta_mu)
-		
-			phi_rrr    = (phi[j+2][k] - 2.0 * phi[j+1][k] + phi[j-1][k] - phi[j-2][k]) / (2.0 * pow(delta_r, 3.0))
-			phi_mumumu = (phi[j][k+2] - 2.0 * phi[j][k+1] + phi[j][k-1] - phi[j][k-2]) / (2.0 * pow(delta_mu, 3.0))
+			
+			if (j==1):
+				phi_rrr    = (phi[j+2][k] - 2.0 * phi[j+1][k] + phi[j-1][k] + phi[1][k]) / (2.0 * pow(delta_r, 3.0))
+			else:
+				phi_rrr    = (phi[j+2][k] - 2.0 * phi[j+1][k] + phi[j-1][k] - phi[j-2][k]) / (2.0 * pow(delta_r, 3.0))
+
+#			if (k==m-1):
+#				print 'Here m-1: ', k, m-1
+#			if (k==m-2):
+#				print 'Here m-2: ', k, m-2
+
+			if (k==1):
+				phi_mumumu = (phi[j][k+2] - 2.0 * phi[j][k+1] + phi[j][k-1] + phi[j][1]) / (2.0 * pow(delta_mu, 3.0))
+			elif (k==m-2):
+				phi_mumumu = (-phi[j][k] - 2.0 * phi[j][k+1] + phi[j][k-1] - phi[j][k-2]) / (2.0 * pow(delta_mu, 3.0))
+			else:
+				phi_mumumu = (phi[j][k+2] - 2.0 * phi[j][k+1] + phi[j][k-1] - phi[j][k-2]) / (2.0 * pow(delta_mu, 3.0))
+
+
 			phi_rrp1= (phi[j-1][k+1] - 2.0 * phi[j][k+1] + phi[j+1][k+1]) / pow(delta_r, 2.0)
 			phi_rrm1= (phi[j-1][k-1] - 2.0 * phi[j][k-1] + phi[j+1][k-1]) / pow(delta_r, 2.0)
 			phi_rrmu= (phi_rrp1 - phi_rrm1)/(2.0*delta_mu)
@@ -178,20 +202,44 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 #			print delta_phi_delta_t
 #			print delta_I_delta_t
 
-			phi[j][k] = phi[j][k] + delta_t * delta_phi_delta_t
-			I[j][k]   = I[j][k] + delta_t * delta_I_delta_t
+			phi_new[j][k] = phi[j][k] + delta_t * delta_phi_delta_t
+			I_new[j][k]   = I[j][k] + delta_t * delta_I_delta_t
+
+	for j in range (0, n):
+		phi_new[j][0] = 0.0
+		phi_new[j][m-1] = 0.0
+		I_new[j][0] = 0.0
+		I_new[j][m-1] = 0.0
 
 	for k in range (0, m):
-		j = n-1
-		phi[j][k] = phi[j-2][k]
-		j = n-2
-		phi[j][k] = phi[j-1][k]
+
+		al = []
+		for l in range (2,20): 
+			var = pow(r_star, l) / (l + 1.0) * sqrt(3.1415926*(2.0*l+1.0)) 
+			res = 0.0
+			for j in range (1, m-2):
+				res = res + 0.5 * (phi[n-3][j] + phi[n-3][j+1]) * lpmv(l, 1, 0.5*(mu_grid[j] + mu_grid[j+1])) * delta_mu/sqrt(1.0 - pow(mu_grid[j],2.0))
+			var = res * var
+			al.append(var)
+		
+		res = 0.0
+		for l in range (2,20):
+			res = res - al[l-2] / pow(r_star, l+1) * sqrt((2.0*l+1.0) / (4.0*3.1415926)) * sqrt(1.0 - pow(mu_grid[k], 2.0)) * lpmv(l, 1, mu_grid[k])
+		res = res * 2 * delta_r
+
+		phi_new[n-1][k] = phi[n-3][k] + res
+		phi_new[n-2][k] = phi[n-4][k] + res 
+
+		I_new[n-1][k] = 0.0
+		I_new[n-2][k] = 0.0
+		I_new[0][k] = 0.0
+		phi_new[0][k] = 0.0
 
 
-	return [phi, I]
+	return [phi_new, I_new, delta_t]
 
-n = 60
-m = 120
+n = 22
+m = 22
 
 
 r_grid, mu_grid, phi, I = initial_pure_poloidal (n, m, 10)
@@ -199,9 +247,11 @@ r_grid, mu_grid, phi, I = initial_pure_poloidal (n, m, 10)
 plot_res (n, m, phi, I, r_grid, mu_grid)
 #plot_res (n, m, I, r_grid, mu_grid)
 
+delta_t = 0
+
 for k in range (0, 7000):
-	print k, np.max(phi), np.min(phi), np.max(I), np.min(I)
-	phi, I = one_time_step (n, m, phi, I, r_grid, mu_grid)
+	print k, np.max(phi), np.min(phi), np.max(I), np.min(I), delta_t/3.2e7*k
+	phi, I, delta_t = one_time_step (n, m, phi, I, r_grid, mu_grid)
 	if (k % 250 == 10):
 		plot_res (n, m, phi,I, r_grid, mu_grid)
 #		plot_res (n, m, I, r_grid, mu_grid)
