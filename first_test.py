@@ -36,9 +36,10 @@ def initial_pure_poloidal (n, m, B):
 
 	for j in range (2, n-2):
 		for k in range (2, m-2):
-#			phi  [j][k] = 1e20 * sqrt(1 - np.power(mu_grid[k], 2.0)) / r_grid[j]  ## This generates another component
-			I  [j][k] = 1e16 * cos(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
-			phi  [j][k] = 1e20 * sin(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
+			phi  [j][k] = 1e20 * sqrt(1 - np.power(mu_grid[k], 2.0)) / r_grid[j]  ## This generates another component
+			I [j][k] = 0
+#			I  [j][k] = 1e16 * cos(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
+#			phi  [j][k] = 1e20 * sin(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
 
 	return [r_grid, mu_grid, phi, I]
 
@@ -128,37 +129,44 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 			nabla_fi  = [0.0, 0.0, 1.0/(r*sintheta)]
 			nabla_Phi = [phi_r, -phi_mu * sintheta/r, 0] 
 
-			grad_shafranov   = phi_rr + costheta * phi_mu / r2 + phi_mumu * sintheta * sintheta / r2 - costheta * phi_mu / r2 
-			grad_shafranov_I = I_rr   + costheta * I_mu / r2   + I_mumu   * sintheta * sintheta / r2 - costheta * I_mu /r2
+#			grad_shafranov   = phi_rr + costheta * phi_mu / r2 + phi_mumu * sintheta2 / r2 - costheta * phi_mu / r2 
+#			grad_shafranov_I = I_rr   + costheta * I_mu / r2   + I_mumu   * sintheta * sintheta / r2 - costheta * I_mu /r2
+
+			grad_shafranov   = phi_rr + phi_mumu * sintheta2 / r2  
+			grad_shafranov_I = I_rr   + I_mumu   * sintheta2 / r2 
+
 
 #			print '------------'
 #			print grad_shafranov, const1			
 #			print '--------------'
 
-			delta_grad_shafranov1 = phi_rrr - 2.0 * costheta * phi_mu / r3 + costheta * phi_rmu / r2 - 2.0 * sintheta2 * phi_mumu / r3 + sintheta2 * phi_rmumu / r2 + 2.0*costheta * phi_mu /r2 - costheta * phi_rmu /r2
+#			delta_grad_shafranov1 = phi_rrr - 2.0 * costheta * phi_mu / r3 + costheta * phi_rmu / r2 - 2.0 * sintheta2 * phi_mumu / r3 + sintheta2 * phi_rmumu / r2 + 2.0*costheta * phi_mu /r2 - costheta * phi_rmu /r2
+			delta_grad_shafranov1 = phi_rrr - 2.0 * sintheta2 * phi_mumu / r3 + sintheta2 * phi_rmumu / r2 
 
-			delta_grad_shafranov2 = -sintheta * phi_rrmu / r  - sintheta * costheta * phi_mumu / r3 - sintheta * phi_mu / r3 - sintheta3 *phi_mumumu / r3 + 2.0*sintheta*costheta * phi_mumu /r3 + sintheta * costheta * phi_mumu / r3 + sintheta * phi_mu / r3
+#			delta_grad_shafranov2 = -sintheta * phi_rrmu / r  - sintheta * costheta * phi_mumu / r3 - sintheta * phi_mu / r3 - sintheta3 *phi_mumumu / r3 + 2.0*sintheta*costheta * phi_mumu /r3 + sintheta * costheta * phi_mumu / r3 + sintheta * phi_mu / r3
+
+			delta_grad_shafranov2 = -sintheta * phi_rrmu / r  - sintheta3 *phi_mumumu / r3 + 2.0*sintheta*costheta * phi_mumu /r3 
 
 			const2 = c / (4.0 * 3.1415926 * e_charge * ne[j][k] * r2 * sintheta2)
 
-			delta_omega1 =  -const2 / r * grad_shafranov             +  const2 * delta_grad_shafranov1
-			delta_omega2 =  -const2 / r / sintheta * grad_shafranov  +  const2 * delta_grad_shafranov2
+			delta_omega1 =  - 2.0 * const2 / r * grad_shafranov             +  const2 * delta_grad_shafranov1
+			delta_omega2 =  - 2.0 * const2*costheta /(r * sintheta) * grad_shafranov  +  const2 * delta_grad_shafranov2
 
 			delta_omega_delta_phi_delta_Phi = delta_omega2 * phi_r / ( r * sintheta) + delta_omega1 * phi_mu / r2
 	
 			const3 = c / (4.0 * 3.1415926 * e_charge * ne[j][k]) 
 
-			delta_hi_delta_phi_delta_I = -const3 * (2.0 * costheta * I_r / (r4 * sintheta4) + I_mu / (r4 * r * sintheta2)) 
+			delta_hi_delta_phi_delta_I = -const3 * (2.0 * costheta * I_r / (r4 * sintheta4) + 2.0*I_mu / (r4 * r * sintheta2)) 
 
-			delta_I_delta_sigma = I_r * sigma_r - sintheta2 * I_mu * sigma_mu / r2
+			delta_I_delta_sigma = I_r * sigma_r + sintheta2 * I_mu * sigma_mu / r2
 
-			delta_phi_delta_t =  - const1 / ne[j][k] * (phi_r * (-I_mu)/r2 + phi_mu*I_r/r2) + c2 / (4.0 * 3.1415926 * sigma[j][k]) * grad_shafranov
+			delta_phi_delta_t =  - const1 / (ne[j][k]) * (-phi_r * I_mu/r2 + phi_mu*I_r/r2) + c2 / (4.0 * 3.1415926 * sigma[j][k]) * grad_shafranov
 
 #			print '----------------------'
 #			print - const1 / ne[j][k] * (phi_r * (-I_mu)/r2 + phi_mu*I_r/r2)
 #			print c2 / (4.0 * 3.1415926 * sigma[j][k]) * grad_shafranov
 	
-			delta_I_delta_t   =  - r2 * sintheta2 * delta_omega_delta_phi_delta_Phi - I[j][k] * delta_hi_delta_phi_delta_I + c*c / (4.0 * 3.1415926 * sigma[j][k]) * ( grad_shafranov_I + delta_I_delta_sigma / sigma[j][k] ) 
+			delta_I_delta_t   =  - r2 * sintheta2 * delta_omega_delta_phi_delta_Phi - I[j][k] * delta_hi_delta_phi_delta_I + c*c / (4.0 * 3.1415926 * sigma[j][k]) * ( grad_shafranov_I - delta_I_delta_sigma / sigma[j][k] ) 
 
 #			print '---------------------------------++++'
 #			print - r2 * sintheta2 * delta_omega_delta_phi_delta_Phi
@@ -173,10 +181,17 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 			phi[j][k] = phi[j][k] + delta_t * delta_phi_delta_t
 			I[j][k]   = I[j][k] + delta_t * delta_I_delta_t
 
+	for k in range (0, m):
+		j = n-1
+		phi[j][k] = phi[j-2][k]
+		j = n-2
+		phi[j][k] = phi[j-1][k]
+
+
 	return [phi, I]
 
-n = 39
-m = 50
+n = 60
+m = 120
 
 
 r_grid, mu_grid, phi, I = initial_pure_poloidal (n, m, 10)
