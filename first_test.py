@@ -36,9 +36,10 @@ def initial_pure_poloidal (n, m, B):
 
 	for j in range (2, n-2):
 		for k in range (2, m-2):
-#			phi  [j][k] = 1e20 * sqrt(1 - np.power(mu_grid[k], 2.0)) / r_grid[j]  ## This generates another component
-			I  [j][k] = 1e16 * cos(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
-			phi  [j][k] = 1e20 * sin(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
+			phi  [j][k] = 1e20 * sqrt(1 - np.power(mu_grid[k], 2.0)) / r_grid[j]  ## This generates another component
+			I    [j][k] = 0.0
+#			I  [j][k] = 1e16 * cos(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
+#			phi  [j][k] = 1e20 * sin(3.0*acos(mu_grid[k])) / pow(r_grid[j], 1.0)
 
 	return [r_grid, mu_grid, phi, I]
 
@@ -77,6 +78,9 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 
         r_grid, mu_grid, ne, sigma = crust_model_grid (n, m)
 
+	phi_new=np.zeros((n,m))
+	I_new=np.zeros((n,m))
+
 #        print delta_t / 3.2e7 
 
 	for j in range (2, n-2):                 ## r  change 
@@ -110,8 +114,10 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 
 				phi_mumup= (-phi[j+1][k+1] - 2.0 * phi[j+1][k] + phi[j+1][k+1]) / pow(delta_mu, 2.0)
 				phi_mumul= (-phi[j-1][k+1] - 2.0 * phi[j-1][k] + phi[j-1][k+1]) / pow(delta_mu, 2.0)
-				I_mu  = (I[j][k+1] + I[j][k+1])/ (2.0 * delta_mu)
-				I_mumu= (-I[j][k+1] - 2.0 * I[j][k] + I[j][k+1]) / pow(delta_mu, 2.0)
+				I_mu = 0.0
+				I_mumu = 0.0
+#				I_mu  = (I[j][k+1] + I[j][k+1])/ (2.0 * delta_mu)
+#				I_mumu= (-I[j][k+1] - 2.0 * I[j][k] + I[j][k+1]) / pow(delta_mu, 2.0)
 				sigma_mu  = (sigma[j][k+1] + sigma[j][k+1])/ (2.0 * delta_mu)
 
 			elif (k==(m-1) or k==(m-2)):
@@ -128,8 +134,10 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 
 				phi_mumup= (phi[j+1][k-1] - 2.0 * phi[j+1][k] - phi[j+1][k-1]) / pow(delta_mu, 2.0)
 				phi_mumul= (phi[j-1][k-1] - 2.0 * phi[j-1][k] - phi[j-1][k-1]) / pow(delta_mu, 2.0)
-				I_mu  = (-I[j][k-1] - I[j][k-1])/ (2.0 * delta_mu)
-				I_mumu= (I[j][k-1] - 2.0 * I[j][k] - I[j][k-1]) / pow(delta_mu, 2.0)
+#				I_mu  = (-I[j][k-1] - I[j][k-1])/ (2.0 * delta_mu)
+#				I_mumu= (I[j][k-1] - 2.0 * I[j][k] - I[j][k-1]) / pow(delta_mu, 2.0)
+				I_mu = 0.0
+				I_mumu = 0.0
 				sigma_mu  = (-sigma[j][k-1] - sigma[j][k-1])/ (2.0 * delta_mu)
 
 			else:
@@ -202,7 +210,7 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 #			print - const1 / ne[j][k] * (phi_r * (-I_mu)/r2 + phi_mu*I_r/r2)
 #			print c2 / (4.0 * 3.1415926 * sigma[j][k]) * grad_shafranov
 	
-			delta_I_delta_t   =  - r2 * sintheta2 * delta_omega_delta_phi_delta_Phi - I[j][k] * delta_hi_delta_phi_delta_I + c*c / (4.0 * 3.1415926 * sigma[j][k]) * ( grad_shafranov_I + delta_I_delta_sigma / sigma[j][k] ) 
+			delta_I_delta_t   =  - r2 * sintheta2 * delta_omega_delta_phi_delta_Phi - I[j][k] * delta_hi_delta_phi_delta_I + c*c / (4.0 * 3.1415926 * sigma[j][k]) * ( grad_shafranov_I - delta_I_delta_sigma / sigma[j][k] ) 
 
 #			print '---------------------------------++++'
 #			print - r2 * sintheta2 * delta_omega_delta_phi_delta_Phi
@@ -214,13 +222,29 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 #			print delta_phi_delta_t
 #			print delta_I_delta_t
 
-			phi[j][k] = phi[j][k] + delta_t * delta_phi_delta_t
-			I[j][k]   = I[j][k] + delta_t * delta_I_delta_t
+			phi_new[j][k] = phi[j][k] + delta_t * delta_phi_delta_t
+			I_new[j][k]   = I[j][k] + delta_t * delta_I_delta_t
 
-	return [phi, I]
 
-n = 39
-m = 50
+#	for j in range (2, n-2):                 ## r  change 
+        for k in range (1, m-1):         ## mu change 
+		j = n-2
+		phi_new[j][k]   = phi_new[j-2][k]
+		phi_new[j+1][k] = phi_new[j-3][k] 
+
+	for j in range (0, n):
+		k=1
+		phi_new[j][k-1] = phi_new[j][k]
+		I_new [j][k-1]  = I_new [j][k]
+		k=m-1
+		phi_new[j][k] = phi_new[j][k-1]
+		I_new[j][k] = I_new [j][k-1]
+
+
+	return [phi_new, I_new]
+
+n = 48
+m = 120
 
 
 r_grid, mu_grid, phi, I = initial_pure_poloidal (n, m, 10)
@@ -231,7 +255,7 @@ plot_res (n, m, phi, I, r_grid, mu_grid)
 for k in range (0, 7000):
 	print k, np.max(phi), np.min(phi), np.max(I), np.min(I)
 	phi, I = one_time_step (n, m, phi, I, r_grid, mu_grid)
-	if (k % 250 == 10):
+	if (k % 100 == 10):
 		plot_res (n, m, phi,I, r_grid, mu_grid)
 #		plot_res (n, m, I, r_grid, mu_grid)
 
