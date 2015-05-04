@@ -80,9 +80,11 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 #        print delta_t / 3.2e7 
 
 	for j in range (2, n-2):                 ## r  change 
-		for k in range (2, m-2):         ## mu change 
+		for k in range (1, m-1):         ## mu change 
 			## for each point inside the grid we compute time derivative 
 			## for scalar functions phi and I
+#			print k
+
 			sintheta  = sqrt(1.0 - pow(mu_grid[k], 2.0))
 			sintheta2 = sintheta  * sintheta
 			sintheta3 = sintheta2 * sintheta
@@ -94,33 +96,75 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 			r4 = pow(r, 4.0)
 
 			phi_r   = (phi[j+1][k] - phi[j-1][k]) / (2.0 * delta_r)
-			phi_mu  = (phi[j][k+1] - phi[j][k-1]) / (2.0 * delta_mu)
+			if (k==0 or k==1):
+				phi_mu  = (phi[j][k+1] + phi[j][k+1]) / (2.0 * delta_mu)
+				phi_mumu= (-phi[j][k+1] - 2.0 * phi[j][k] + phi[j][k+1]) / pow(delta_mu, 2.0)
+		
+				phi_rp  = (phi[j+1][k+1] + phi[j-1][k+1]) / (2.0 * delta_r)
+				phi_rl  = (-phi[j+1][k+1] - phi[j-1][k+1]) / (2.0 * delta_r)
+
+				phi_mumumu = (phi[j][k+2] - 2.0 * phi[j][k+1] - phi[j][k+1] + phi[j][k+2]) / (2.0 * pow(delta_mu, 3.0))
+
+				phi_rrp1= (phi[j-1][k+1] - 2.0 * phi[j][k+1] + phi[j+1][k+1]) / pow(delta_r, 2.0)
+				phi_rrm1= (-phi[j-1][k+1] + 2.0 * phi[j][k+1] - phi[j+1][k+1]) / pow(delta_r, 2.0)
+
+				phi_mumup= (-phi[j+1][k+1] - 2.0 * phi[j+1][k] + phi[j+1][k+1]) / pow(delta_mu, 2.0)
+				phi_mumul= (-phi[j-1][k+1] - 2.0 * phi[j-1][k] + phi[j-1][k+1]) / pow(delta_mu, 2.0)
+				I_mu  = (I[j][k+1] + I[j][k+1])/ (2.0 * delta_mu)
+				I_mumu= (-I[j][k+1] - 2.0 * I[j][k] + I[j][k+1]) / pow(delta_mu, 2.0)
+				sigma_mu  = (sigma[j][k+1] + sigma[j][k+1])/ (2.0 * delta_mu)
+
+			elif (k==(m-1) or k==(m-2)):
+				phi_mu  = (-phi[j][k-1] - phi[j][k-1]) / (2.0 * delta_mu)
+				phi_mumu= (phi[j][k-1] - 2.0 * phi[j][k] - phi[j][k-1]) / pow(delta_mu, 2.0)
+
+				phi_rp  = (-phi[j+1][k-1] + phi[j-1][k-1]) / (2.0 * delta_r)
+				phi_rl  = (phi[j+1][k-1] - phi[j-1][k-1]) / (2.0 * delta_r)
+	
+				phi_mumumu = (-phi[j][k-2] + 2.0 * phi[j][k-1] + phi[j][k-1] - phi[j][k-2]) / (2.0 * pow(delta_mu, 3.0))
+		
+				phi_rrp1= (-phi[j-1][k-1] + 2.0 * phi[j][k-1] - phi[j+1][k-1]) / pow(delta_r, 2.0)
+				phi_rrm1= (phi[j-1][k-1] - 2.0 * phi[j][k-1] + phi[j+1][k-1]) / pow(delta_r, 2.0)
+
+				phi_mumup= (phi[j+1][k-1] - 2.0 * phi[j+1][k] - phi[j+1][k-1]) / pow(delta_mu, 2.0)
+				phi_mumul= (phi[j-1][k-1] - 2.0 * phi[j-1][k] - phi[j-1][k-1]) / pow(delta_mu, 2.0)
+				I_mu  = (-I[j][k-1] - I[j][k-1])/ (2.0 * delta_mu)
+				I_mumu= (I[j][k-1] - 2.0 * I[j][k] - I[j][k-1]) / pow(delta_mu, 2.0)
+				sigma_mu  = (-sigma[j][k-1] - sigma[j][k-1])/ (2.0 * delta_mu)
+
+			else:
+				phi_mu  = (phi[j][k+1] - phi[j][k-1]) / (2.0 * delta_mu)
+				phi_mumu= (phi[j][k-1] - 2.0 * phi[j][k] + phi[j][k+1]) / pow(delta_mu, 2.0)
+
+				phi_rp  = (phi[j+1][k+1] - phi[j-1][k+1]) / (2.0 * delta_r)
+				phi_rl  = (phi[j+1][k-1] - phi[j-1][k-1]) / (2.0 * delta_r)
+
+				phi_mumumu = (phi[j][k+2] - 2.0 * phi[j][k+1] + phi[j][k-1] - phi[j][k-2]) / (2.0 * pow(delta_mu, 3.0))
+
+				phi_rrp1= (phi[j-1][k+1] - 2.0 * phi[j][k+1] + phi[j+1][k+1]) / pow(delta_r, 2.0)
+				phi_rrm1= (phi[j-1][k-1] - 2.0 * phi[j][k-1] + phi[j+1][k-1]) / pow(delta_r, 2.0)
+
+				phi_mumup= (phi[j+1][k-1] - 2.0 * phi[j+1][k] + phi[j+1][k+1]) / pow(delta_mu, 2.0)
+				phi_mumul= (phi[j-1][k-1] - 2.0 * phi[j-1][k] + phi[j-1][k+1]) / pow(delta_mu, 2.0)
+				I_mu  = (I[j][k+1] - I[j][k-1])/ (2.0 * delta_mu)
+				I_mumu= (I[j][k-1] - 2.0 * I[j][k] + I[j][k+1]) / pow(delta_mu, 2.0)
+				sigma_mu  = (sigma[j][k+1] - sigma[j][k-1])/ (2.0 * delta_mu)
 
 			phi_rr  = (phi[j-1][k] - 2.0 * phi[j][k] + phi[j+1][k]) / pow(delta_r, 2.0)
-			phi_mumu= (phi[j][k-1] - 2.0 * phi[j][k] + phi[j][k+1]) / pow(delta_mu, 2.0)
-
-			phi_rp  = (phi[j+1][k+1] - phi[j-1][k+1]) / (2.0 * delta_r)
-			phi_rl  = (phi[j+1][k-1] - phi[j-1][k-1]) / (2.0 * delta_r)
+		
 			phi_rmu = (phi_rp - phi_rl) / (2.0 * delta_mu)
 		
 			phi_rrr    = (phi[j+2][k] - 2.0 * phi[j+1][k] + phi[j-1][k] - phi[j-2][k]) / (2.0 * pow(delta_r, 3.0))
-			phi_mumumu = (phi[j][k+2] - 2.0 * phi[j][k+1] + phi[j][k-1] - phi[j][k-2]) / (2.0 * pow(delta_mu, 3.0))
-			phi_rrp1= (phi[j-1][k+1] - 2.0 * phi[j][k+1] + phi[j+1][k+1]) / pow(delta_r, 2.0)
-			phi_rrm1= (phi[j-1][k-1] - 2.0 * phi[j][k-1] + phi[j+1][k-1]) / pow(delta_r, 2.0)
+	
 			phi_rrmu= (phi_rrp1 - phi_rrm1)/(2.0*delta_mu)
 
-			phi_mumup= (phi[j+1][k-1] - 2.0 * phi[j+1][k] + phi[j+1][k+1]) / pow(delta_mu, 2.0)
-			phi_mumul= (phi[j-1][k-1] - 2.0 * phi[j-1][k] + phi[j-1][k+1]) / pow(delta_mu, 2.0)
 			phi_rmumu= (phi_mumup - phi_mumul) / (2.0 * delta_r)
 
 			I_r   = (I[j+1][k] - I[j-1][k])/ (2.0 * delta_r)
-			I_mu  = (I[j][k+1] - I[j][k-1])/ (2.0 * delta_mu)
 
 			I_rr  = (I[j-1][k] - 2.0 * I[j][k] + I[j+1][k]) / pow(delta_r, 2.0)
-			I_mumu= (I[j][k-1] - 2.0 * I[j][k] + I[j][k+1]) / pow(delta_mu, 2.0)
 
 			sigma_r   = (sigma[j+1][k] - sigma[j-1][k])/ (2.0 * delta_r)
-			sigma_mu  = (sigma[j][k+1] - sigma[j][k-1])/ (2.0 * delta_mu)
 
 
 
