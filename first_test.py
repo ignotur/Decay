@@ -75,7 +75,7 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 	c = 3.0e10
 	c2 = pow(c, 2.0)
 	r_star = 1.0e6 
-	h = 5e8 ## Should be analysed again (!!!)
+	h = 1e8 ## Should be analysed again (!!!)
 	delta_r  = 0.1 * r_star / float(n)
 	delta_mu = 2.0 / float(m)
 	delta_t  = 0.25 * h * delta_r * delta_mu 
@@ -211,21 +211,26 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 		I_new[j][0] = 0.0
 		I_new[j][m-1] = 0.0
 
-	for k in range (0, m):
+	for k in range (1, m-1):
 
+#		legendre_fun = lpmn(1, 20, z)[0][1]
+		l_polinom = 16
 		al = []
-		for l in range (2,20): 
+		for l in range (1,l_polinom): 
 			var = pow(r_star, l) / (l + 1.0) * sqrt(3.1415926*(2.0*l+1.0)) 
 			res = 0.0
-			for j in range (1, m-2):
-				res = res + 0.5 * (phi[n-3][j] + phi[n-3][j+1]) * lpmv(l, 1, 0.5*(mu_grid[j] + mu_grid[j+1])) * delta_mu/sqrt(1.0 - pow(mu_grid[j],2.0))
+			for j in range (1, m-1):
+				legendre_fun = lpmn(1, l_polinom, 0.5*(mu_grid[j] + mu_grid[j+1]))[0][1]
+				res = res + 0.5 * (phi[n-3][j] + phi[n-3][j+1]) * legendre_fun[l] * delta_mu/sqrt(1.0 - pow(mu_grid[j],2.0))
 			var = res * var
 			al.append(var)
 		
 		res = 0.0
-		for l in range (2,20):
-			res = res - al[l-2] / pow(r_star, l+1) * sqrt((2.0*l+1.0) / (4.0*3.1415926)) * sqrt(1.0 - pow(mu_grid[k], 2.0)) * lpmv(l, 1, mu_grid[k])
+		legendre_fun = lpmn(1, l_polinom, mu_grid[k])[0][1]
+		for l in range (1,l_polinom):
+			res = res - al[l-1] / pow(r_star, l+1) * sqrt((2.0*l+1.0) / (4.0*3.1415926)) * sqrt(1.0 - pow(mu_grid[k], 2.0)) * legendre_fun[l]
 		res = res * 2 * delta_r
+
 
 		phi_new[n-1][k] = phi[n-3][k] + res
 		phi_new[n-2][k] = phi[n-4][k] + res 
@@ -238,8 +243,8 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 
 	return [phi_new, I_new, delta_t]
 
-n = 22
-m = 22
+n = 40
+m = 100
 
 
 r_grid, mu_grid, phi, I = initial_pure_poloidal (n, m, 10)
@@ -252,7 +257,7 @@ delta_t = 0
 for k in range (0, 7000):
 	print k, np.max(phi), np.min(phi), np.max(I), np.min(I), delta_t/3.2e7*k
 	phi, I, delta_t = one_time_step (n, m, phi, I, r_grid, mu_grid)
-	if (k % 250 == 10):
+	if (k % 100 == 10):
 		plot_res (n, m, phi,I, r_grid, mu_grid)
 #		plot_res (n, m, I, r_grid, mu_grid)
 
