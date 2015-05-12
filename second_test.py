@@ -51,7 +51,7 @@ def initial_pure_poloidal (n, m, B):
 	I   = np.zeros((n,m))  
 	for j in range (1, n):
 		for k in range (0, m):
-		 	phi  [j][k] = 5e15 * sin(mu_grid[k]) /r_grid[j]  ## This generates another component (5e29)
+		 	phi  [j][k] = -5e15 * sin(mu_grid[k]) /r_grid[j]  ## This generates another component (5e29)
 			I [j][k] = 0
 	return [r_grid, mu_grid, phi, I]
 
@@ -87,7 +87,7 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 	c = 3.0e10
 	c2 = pow(c, 2.0)
 	r_star = 1.0e6 
-	h =1.0e7 ## Should be analysed again (!!!)
+	h =1.0e8 ## Should be analysed again (!!!)
 	delta_r  = 0.1 * r_star / float(n)
 	delta_mu = pi / float(m)
 	delta_t  = 0.25 * h * delta_r * delta_mu 
@@ -98,31 +98,31 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 	phi_new = np.zeros((n,m))
 	I_new = np.zeros((n,m))
 
+#	print 'here is pi: ', pi
+
 	for j in range (1, n-2):                 ## r  change 
-		for k in range (2, m-2):         ## mu change 
-			r_b = c*1.0e14/(4.0*pi*ne[j][k]*e_charge)*sigma[j][k]			## temporal equation eq. (3) from ArXiv 1410.5833
+		for k in range (2, m-2):         ## mu change
+			eta = pow(c, 2.0) / (4*pi*sigma[j][k]) 
+			r_b = c*1.0e14/(4.0*pi*ne[j][k]*e_charge*eta)			## temporal equation eq. (3) from ArXiv 1410.5833
 			r_b_inv = 1.0/r_b
 			hi = const1 / (ne[j][k] * pow(r_grid[j] * sin(mu_grid[k]), 2.0)) 
-			shafranov_phi = (phi[j+1][k] + phi[j-1][k] - 2.0 * phi[j][k]) / pow(delta_r, 2.0) + (phi[j][k+1] + phi[j][k-1] - 2.0*phi[j][k]) / pow(r_grid[j], 2.0) / pow(mu_grid[k], 2.0) - 1.0/tan(mu_grid[k]) * (phi[j][k+1] - phi[j][k-1])/2.0/pow(r_grid[j], 2.0) / delta_mu
+			shafranov_phi = (phi[j+1][k] + phi[j-1][k] - 2.0 * phi[j][k]) / pow(delta_r, 2.0) + (phi[j][k+1] + phi[j][k-1] - 2.0*phi[j][k]) / (pow(r_grid[j], 2.0) * pow(delta_mu, 2.0)) - 1.0/tan(mu_grid[k]) * (phi[j][k+1] - phi[j][k-1])/2.0/pow(r_grid[j], 2.0) / delta_mu
 
-			delta_phi_delta_t = sin(mu_grid[k]) * hi / (4.0*delta_r*delta_mu) * ( (I[j][k+1] - I[j][k-1])*(phi[j+1][k] - phi[j-1][k])  - (I[j+1][k] - I[j-1][k])*(phi[j][k+1] - phi[j][k-1])) + r_b_inv * shafranov_phi	
+			delta_phi_delta_t = sin(mu_grid[k]) * hi / (4.0*delta_r*delta_mu) * ( (I[j][k+1] - I[j][k-1])*(phi[j+1][k] - phi[j-1][k])  - (I[j+1][k] - I[j-1][k])*(phi[j][k+1] - phi[j][k-1])) + r_b_inv * shafranov_phi * eta	
 
 	#		F_r     = - hi * shafranov_phi * (phi[j][k+1] - phi[j][k-1]) / delta_mu - hi * I[j][k] * (I[j][k+1] - I[j][k-1]) / delta_mu - r_b_inv / (sigma[j][k] * sin(mu_grid[k])) * (I[j+1][k] - I[j-1][k])/delta_r
 
 			## Prepare differential operators at upper and bottom level for F_r_pr and F_r_pl
 
-	#		shafranov_phipr =(phi[j+2][k] + phi[j][k] - 2.0 * phi[j+1][k]) / pow(delta_r, 2.0) 
-	#		shafranov_phipr = shafranov_phipr + (phi[j+1][k+1] + phi[j+1][k-1] - 2.0*phi[j+1][k]) / (pow(r_grid[j+1], 2.0) * pow(mu_grid[k], 2.0))
-	#		shafranov_phipr = shafranov_phipr - 1.0/tan(mu_grid[k]) * (phi[j+1][k+1] - phi[j+1][k-1])/2.0/pow(r_grid[j+1], 2.0) / delta_mu
-
 			shafranov_phipr = (phi[j+2][k] + phi[j][k] - 2.0 * phi[j+1][k]) / pow(delta_r, 2.0) + (phi[j+1][k+1] + phi[j+1][k-1] - 2.0*phi[j+1][k]) / pow(r_grid[j+1], 2.0) / pow(mu_grid[k], 2.0) - 1.0/tan(mu_grid[k]) * (phi[j+1][k+1] - phi[j+1][k-1])/2.0/pow(r_grid[j], 2.0) / delta_mu
 			shafranov_philr = (phi[j][k] + phi[j-2][k] - 2.0 * phi[j-1][k]) / pow(delta_r, 2.0) + (phi[j-1][k+1] + phi[j-1][k-1] - 2.0*phi[j-1][k]) / pow(r_grid[j-1], 2.0) / pow(mu_grid[k], 2.0) - 1.0/tan(mu_grid[k]) * (phi[j-1][k+1] - phi[j-1][k-1])/2.0/pow(r_grid[j-1], 2.0) / delta_mu
-			hipr = const1 / (ne[j+1][k] * pow(r_grid[j+1] * sin(mu_grid[k]), 2.0)) 
-			hilr = const1 / (ne[j-1][k] * pow(r_grid[j-1] * sin(mu_grid[k]), 2.0)) 
 
-			F_r_pr     = -hipr * shafranov_phipr * (phi[j+1][k+1] - phi[j+1][k-1]) / delta_mu - hipr * I[j+1][k] * (I[j+1][k+1] - I[j+1][k-1]) / delta_mu - r_b_inv / (sigma[j+1][k] * sin(mu_grid[k])) * (I[j+2][k] - I[j][k])/delta_r
+			hipr = const1 / (crust_model(0.5*(r_grid[j+1] + r_grid[j]), 0.0)[0] * pow(0.5*(r_grid[j+1] + r_grid[j]) * sin(mu_grid[k]), 2.0)) 
+			hilr = const1 / (crust_model(0.5*(r_grid[j-1] + r_grid[j]), 0.0)[0] * pow(0.5*(r_grid[j-1] + r_grid[j]) * sin(mu_grid[k]), 2.0)) 
 
-			F_r_lr     = -hilr * shafranov_philr * (phi[j-1][k+1] - phi[j-1][k-1]) / delta_mu - hilr * I[j-1][k] * (I[j-1][k+1] - I[j-1][k-1]) / delta_mu - r_b_inv / (sigma[j-1][k] * sin(mu_grid[k])) * (I[j][k] - I[j-2][k])/delta_r
+			F_r_pr     = -hipr * shafranov_phipr * (phi[j+1][k+1] - phi[j+1][k-1]) / delta_mu - hipr * I[j+1][k] * (I[j+1][k+1] - I[j+1][k-1]) / delta_mu - r_b_inv / (sigma[j+1][k] * sin(mu_grid[k])) * (I[j+1][k] - I[j][k])/delta_r
+
+			F_r_lr     = -hilr * shafranov_philr * (phi[j-1][k+1] - phi[j-1][k-1]) / delta_mu - hilr * I[j-1][k] * (I[j-1][k+1] - I[j-1][k-1]) / delta_mu - r_b_inv / (sigma[j-1][k] * sin(mu_grid[k])) * (I[j][k] - I[j-1][k])/delta_r
 
 
 
@@ -135,9 +135,9 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 
 			shafranov_phi_lmu = (phi[j+1][k-1] + phi[j-1][k-1] - 2.0 * phi[j][k-1]) / pow(delta_r, 2.0) + (phi[j][k] + phi[j][k-2] - 2.0*phi[j][k-1]) / pow(r_grid[j], 2.0) / pow(mu_grid[k-1], 2.0) - 1.0/tan(mu_grid[k-1]) * (phi[j][k] - phi[j][k-2])/2.0/pow(r_grid[j], 2.0) / delta_mu
 
-			F_theta_pmu =  hipmu * shafranov_phi_pmu * phi[j][k+1] * (phi[j+1][k+1]-phi[j-1][k+1]) / delta_r + hipmu * I[j][k+1] * (I[j+1][k+1]-I[j-1][k+1]) / delta_r - r_b_inv / (sigma[j][k+1] * pow(r_grid[j], 2.0) * sin(mu_grid[k+1])) * (I[j][k+2]-I[j][k])/delta_mu
+			F_theta_pmu =  hipmu * shafranov_phi_pmu * phi[j][k+1] * (phi[j+1][k+1]-phi[j][k+1]) / delta_r + hipmu * I[j][k+1] * (I[j+1][k+1]-I[j][k+1]) / delta_r - r_b_inv / (sigma[j][k+1] * pow(r_grid[j], 2.0) * sin(mu_grid[k+1])) * (I[j][k+2]-I[j][k+1])/delta_mu
 
-			F_theta_lmu =  hilmu * shafranov_phi_lmu * phi[j][k-1] * (phi[j+1][k-1]-phi[j-1][k-1]) / delta_r + hilmu * I[j][k-1] * (I[j+1][k-1]-I[j-1][k-1]) / delta_r - r_b_inv / (sigma[j][k-1] * pow(r_grid[j], 2.0) * sin(mu_grid[k-1])) * (I[j][k]-I[j][k-2])/delta_mu
+			F_theta_lmu =  hilmu * shafranov_phi_lmu * phi[j][k-1] * (phi[j+1][k-1]-phi[j][k-1]) / delta_r + hilmu * I[j][k-1] * (I[j+1][k-1]-I[j][k-1]) / delta_r - r_b_inv / (sigma[j][k-1] * pow(r_grid[j], 2.0) * sin(mu_grid[k-1])) * (I[j][k-1]-I[j][k-2])/delta_mu
 
 			delta_I_delta_t = - sin(mu_grid[k])/delta_r * (F_r_pr - F_r_lr) - sin(mu_grid[k])/delta_mu * (F_theta_pmu - F_theta_lmu)
 
@@ -147,7 +147,48 @@ def one_time_step (n, m, phi, I, r_grid, mu_grid):
 
 			## Important reminder (!!!) you should compute r_b_inv for upper and lower layer as well (!!!)
 
-			## Should correctly implement the boundary conditions (!!!)
+#			## Should correctly implement the boundary conditions (!!!)
+
+	## Outer vacuum boundary condition
+
+	l_polinom = 20
+	al = []
+	for l in range (1,l_polinom): 
+		var = 1.0 / (l + 1.0) * sqrt(3.1415926*(2.0*l+1.0)) 
+		res = 0.0
+		for j in range (0, m-1):
+			legendre_fun = lpmn(1, l_polinom, cos(mu_grid[j]))[0][1]
+			res = res + 0.5 * (phi_new[n-3][j] + phi_new[n-3][j+1]) * legendre_fun[l] * delta_mu 
+		var = res * var
+		al.append(var)
+	
+
+	for k in range (1, m-1):
+
+#		legendre_fun = lpmn(1, 20, z)[0][1]
+	
+		res = 0.0
+		legendre_fun = lpmn(1, l_polinom, cos(mu_grid[k]))[0][1]
+		for l in range (1,l_polinom):
+			res = res - al[l-1] / pow(r_star, 1.0) * sqrt((2.0*l+1.0) / (4.0*3.1415926))  * legendre_fun[l] * sin(mu_grid[k])
+		res = res * 2 * delta_r
+
+
+		phi_new[n-1][k] = phi[n-3][k] + res
+#		print phi_new[n-1][k]
+#		phi_new[n-2][k] = phi[n-4][k] + res 
+
+		I_new[n-1][k] = 0.0
+#		I_new[n-2][k] = 0.0
+		I_new[0][k] = 0.0
+		phi_new[0][k] = 0.0
+
+	for j in range (0, n):
+		phi_new[j][0] = 0.0
+		phi_new[j][m-1] = 0.0
+		I_new[j][0] = 0.0
+		I_new[j][m-1] = 0.0
+
 
 	return [phi_new, I_new, r_grid, mu_grid]
 
